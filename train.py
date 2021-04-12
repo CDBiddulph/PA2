@@ -19,7 +19,20 @@ def sample(theta, env, N):
     total_rewards = []
     total_grads = []
 
-    # TODO
+    for _ in range(N):
+        observation = env.reset()
+        traj_rewards = []
+        traj_grads = []
+        for _ in range(200):
+            action_distribution = utils.compute_action_distribution(theta, observation)
+            action = np.random.choice(action_distribution)
+            traj_grads.append(utils.compute_log_softmax_grad(theta, observation, action))
+            observation, cost, done, _ = env.step(action)
+            traj_rewards.append(-cost)
+            if done:
+                break
+        total_rewards.append(traj_rewards)
+        total_grads.append(traj_grads)
 
     return total_grads, total_rewards
 
@@ -34,15 +47,22 @@ def train(N, T, delta):
         theta: the trained model parameters
         avg_episodes_rewards: list of average rewards for each time step
     """
-    theta = np.random.rand(100,1)
+    theta = np.random.rand(100, 1)
     env = gym.make('CartPole-v0')
     env.seed(12345)
 
     episode_rewards = []
 
-    # TODO
+    for _ in range(T):
+        grads, rewards = sample(theta, env, N)
+        value_grad = utils.compute_value_gradient(grads, rewards)
+        fisher = utils.compute_fisher_matrix(grads)
+        eta = utils.compute_eta(delta, fisher, value_grad)
+        episode_rewards.append(np.mean(rewards))
+        theta = theta + eta * np.linalg.inv(fisher) @ value_grad
 
     return theta, episode_rewards
+
 
 if __name__ == '__main__':
     np.random.seed(1234)
